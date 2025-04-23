@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>nearest carpark</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map { height: 93vh; width: 100%; }
+  </style>
+</head>
+<body>
+  <%- include('partials/userHeader') %>
+  <div id="map"></div>
+
+  <script>
+    // 計算兩個經緯度之間的距離 (Haversine 公式)
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // 地球半徑（公里）
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // 距離（公里）
+    }
+
+    // 初始化地圖函數
+    function initMap(carparks, userLat = null, userLng = null) {
+      const map = L.map('map').setView([22.3193, 114.1694], 13); // 預設地圖中心 (香港)
+
+      // 添加地圖層
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 如果有用戶位置，標記用戶位置
+      if (userLat && userLng) {
+        L.marker([userLat, userLng]).addTo(map).bindPopup('You are here').openPopup();
+      }
+
+      let nearestCarpark = null;
+      let minDistance = Infinity;
+
+      // 標記所有停車場
+      carparks.forEach(carpark => {
+        const lat = carpark.coordinates[1];
+        const lng = carpark.coordinates[0];
+        const name = carpark.name;
+
+        if (userLat && userLng) {
+          // 有用戶位置，計算距離
+          const distance = getDistance(userLat, userLng, lat, lng);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestCarpark = { lat, lng, name, distance };
+          }
+
+          L.marker([lat, lng]).addTo(map).bindPopup(`${name}<br>距離: ${distance.toFixed(2)} km`);
+        } else {
+          // 無用戶位置，只顯示名稱
+          L.marker([lat, lng]).addTo(map).bindPopup(name);
+        }
+      });
+
+      // 高亮最近的停車場（若有用戶位置）
+      if (userLat && userLng && nearestCarpark) {
+        L.circleMarker([nearestCarpark.lat, nearestCarpark.lng], {
+          color: 'red',
+          radius: 7
+        }).addTo(map).bindPopup(
+          `最近停車場: ${nearestCarpark.name}<br>距離: ${nearestCarpark.distance.toFixed(2)} km`
+        ).openPopup();
+      }
+    }
+
+    // 檢查定位權限並執行邏輯
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
+        if (permissionStatus.state === 'granted') {
+          // 如果權限已授權，獲取用戶位置
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+              console.log('User Location:', userLat, userLng);
+
+              // 從伺服器獲取停車場資料
+              fetch('/near/info')
+                .then(response => response.json())
+                .then(data => {
+                  const carparks = data.carpark; // 假設伺服器返回停車場清單
+                  initMap(carparks, userLat, userLng);
+                })
+                .catch(error => console.error('Error fetching carpark data:', error));
+            },
+            (error) => console.error('Error fetching location:', error)
+          );
+        } else {
+          // 若未授權，僅顯示停車場的基本信息
+          fetch('/near/info')
+            .then(response => response.json())
+            .then(data => {
+              const carparks = data.carpark; // 假設伺服器返回停車場清單
+              initMap(carparks); // 無用戶位置參數
+            })
+            .catch(error => console.error('Error fetching carpark data:', error));
+        }
+      });
+    } else {
+      console.log('瀏覽器不支持 Permissions API');
+    }
+  </script>
+</body>
+</html>

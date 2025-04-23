@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <meta http-equiv="refresh" content="60">
+    <title>Carpark System</title>
+  </head>
+  <body>
+    <%- include('partials/userHeader') %>
+    <!-- 頁面容器 -->
+    <div class="container my-5">
+      <!-- 標題 -->
+      <h1 class="text-center mb-4">Carpark Information</h1>
+
+      <!-- 搜索欄 -->
+      <div class="d-flex mx-auto" role="search" style="width: 50%;">
+        <input class="form-control me-2" id="searchInput" type="search" placeholder="Search" aria-label="Search">
+        <button class="btn btn-outline-success" id="searchButton">Search</button>
+      </div>
+
+      <!-- 車位類型選擇 -->
+      <div class="row mb-4">
+        <div class="col-md-6 offset-md-3">
+          <label for="carpark-type" class="form-label">Carpark Type:</label>
+          <select id="carpark-type" class="form-select" onchange="fetchData()">
+            <option value="privateCar">Private Car</option>
+            <option value="HGV">HGV</option>
+            <option value="LGV">LGV</option>
+            <option value="coach">Coach</option>
+            <option value="motorCycle">MotorCycle</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 表格 -->
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered text-center">
+          <thead class="table-dark">
+            <tr id="table-headers">
+              <th>Carpark ID</th>
+              <th>Carpark Name</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- 表格內容由 JavaScript 動態填充 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      // 車位字段定義
+      const fieldDefinitions = {
+        privateCar: ["vacancy", "vacancyEV", "vacancyDIS"],
+        HGV: ["vacancy", "vacancyEV"],
+        LGV: ["vacancy", "vacancyEV"],
+        coach: ["vacancy"],
+        motorCycle: ["vacancy"]
+      };
+
+      // 獲取並渲染數據
+      async function fetchData() {
+        const type = document.getElementById("carpark-type").value;
+        const response = await fetch(`/favorite/${type}`);
+        const carparks = await response.json();
+        renderTable(carparks, type);
+      }
+
+      // 渲染表格內容
+      function renderTable(carparks, type) {
+        const fields = fieldDefinitions[type];
+
+        // 更新表頭
+        const headersRow = document.getElementById("table-headers");
+        headersRow.innerHTML = "<th>Carpark ID</th><th>Carpark Name</th>";
+        fields.forEach(field => {
+          const headerCell = document.createElement("th");
+          headerCell.textContent = field;
+          headersRow.appendChild(headerCell);
+        });
+
+        // 更新表格內容
+        const tableBody = document.getElementById("table-body");
+        tableBody.innerHTML = ""; // 清空表格
+        carparks.forEach((carpark, index) => {
+          const row = document.createElement("tr");
+
+          const idCell = document.createElement("td");
+          idCell.textContent = index + 1;
+          row.appendChild(idCell);
+
+          const nameCell = document.createElement("td");
+          nameCell.innerHTML = `<a href="/detail/${carpark._id}">${carpark.name}</a>`;
+          row.appendChild(nameCell);
+
+          fields.forEach(field => {
+            const cell = document.createElement("td");
+            cell.textContent = carpark[type]?.[field] ?? "--";
+            row.appendChild(cell);
+          });
+
+          tableBody.appendChild(row);
+        });
+
+        initializeFavoriteButtons();
+      }
+
+      // 搜索功能
+      document.getElementById('searchButton').addEventListener('click', async () => {
+        const searchValue = document.getElementById('searchInput').value;
+        const type = document.getElementById("carpark-type").value;
+
+        const params = new URLSearchParams();
+        if (searchValue) params.append('q', searchValue);
+
+        const response = await fetch(`/carpark/${type}/search?${params.toString()}`);
+        const data = await response.json();
+        renderTable(data, type);
+      });
+
+      // 收藏/取消收藏功能
+      async function toggleFavorite(carparkId) {
+        const button = document.querySelector(`button[data-id="${carparkId}"]`);
+        const action = button.textContent === '☆' ? 'add' : 'remove';
+
+        const success = await updateFavoriteStatus(carparkId, action);
+        if (success) {
+          button.textContent = action === 'add' ? '★' : '☆';
+          button.classList.toggle('text-warning', action === 'add');
+        } else {
+          alert(action === 'add' ? '收藏失敗，請稍後再試！' : '取消收藏失敗，請稍後再試！');
+        }
+      }
+
+      // 更新收藏狀態
+      async function updateFavoriteStatus(carparkId, action) {
+        const method = action === 'add' ? 'POST' : 'DELETE';
+        try {
+          const response = await fetch(`/favorites/${carparkId}`, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+          });
+          return response.ok;
+        } catch (error) {
+          console.error('更新收藏狀態失敗:', error);
+          return false;
+        }
+      }
+
+      // 初始化收藏按鈕
+      function initializeFavoriteButtons() {
+        const buttons = document.querySelectorAll('button[data-id]');
+        buttons.forEach(button => {
+          const carparkId = button.getAttribute('data-id');
+          button.textContent = isFavorite(carparkId) ? '★' : '☆';
+          button.classList.toggle('text-warning', isFavorite(carparkId));
+        });
+      }
+
+      // 判斷是否已收藏
+      function isFavorite(carparkId) {
+        const favorites = []; // 從後端獲取的收藏數據，需動態替換
+        return favorites.includes(carparkId.toString());
+      }
+
+      // 初始化加載數據
+      fetchData();
+    </script>
+  </body>
+</html>

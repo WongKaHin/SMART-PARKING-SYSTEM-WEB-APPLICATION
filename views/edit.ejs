@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Member</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+
+<body>
+    <%- include('partials/userHeader') %>
+    <div class="container">
+        <h2 class="mt-5">Edit Member</h2>
+        <form id="editForm" action="/edit/<%= data._id %>" method="POST" novalidate>
+            <!-- 分區：基本信息 -->
+            <h4 class="mt-4">Basic Information</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="username">Username</label>
+                    <small class="form-text text-muted">Update your username.</small>
+                    <input type="text" class="form-control" id="username" name="username" value="<%= data.username %>" disabled>
+                    <div class="invalid-feedback">Please enter a username.</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="name">Name</label>
+                    <small class="form-text text-muted">Update your full name (required).</small>
+                    <input type="text" class="form-control" id="name" name="name" value="<%= data.name %>">
+                    <div class="invalid-feedback">Please enter your name.</div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="email">Email</label>
+                    <small class="form-text text-muted">Must include "@" and domain (e.g., user@example.com).</small>
+                    <input type="email" class="form-control" id="email" name="email" value="<%= data.email %>" pattern="^[^@]+@[^@]+\.[^@]+$">
+                    <div class="invalid-feedback">Please enter a valid email address, including "@" and domain.</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="sex">Sex</label>
+                    <small class="form-text text-muted">Select your biological sex.</small>
+                    <select class="form-control" id="sex" name="sex" required>
+                        <option value="M" <%= data.sex === 'M' ? 'selected' : '' %>>M</option>
+                        <option value="F" <%= data.sex === 'F' ? 'selected' : '' %>>F</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your sex.</div>
+                </div>
+            </div>
+
+            <!-- 分區：安全信息 -->
+            <h4 class="mt-4">Security</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="oldPassword">Old Password</label>
+                    <small class="form-text text-muted">Enter your current password (if changing).</small>
+                    <input type="password" class="form-control" id="oldPassword" name="oldPassword" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}" title="Password must be at least 6 characters long and include uppercase, lowercase, and a number.">
+                    <div class="invalid-feedback">Password must meet complexity requirements.</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="newPassword">New Password</label>
+                    <small class="form-text text-muted">Enter your new password (if changing).</small>
+                    <input type="password" class="form-control" id="newPassword" name="newPassword" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}" title="Password must be at least 6 characters long and include uppercase, lowercase, and a number.">
+                    <div class="invalid-feedback">Password must meet complexity requirements.</div>
+                </div>
+            </div>
+
+            <!-- 分區：聯繫信息 -->
+            <h4 class="mt-4">Contact Information</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="phone">Phone Number</label>
+                    <small class="form-text text-muted">Enter a valid phone number (8-15 digits).</small>
+                    <input type="text" class="form-control" id="phone" name="phone" value="<%= data.phone %>" pattern="^[0-9]{8,15}$">
+                    <div class="invalid-feedback">Please enter a valid phone number (8-15 digits).</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="age">Age</label>
+                    <small class="form-text text-muted">Enter your age (must be between 1 and 150).</small>
+                    <input type="number" class="form-control" id="age" name="age" value="<%= data.age %>" min="1" max="150">
+                    <div class="invalid-feedback">Please enter a valid age.</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-4">Save Changes</button>
+        </form>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+    
+            const form = document.getElementById('editForm');
+    
+            // 綁定表單的 submit 事件
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault(); // 阻止默認提交行為
+    
+                // 前端驗證表單是否有效
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated'); // 顯示驗證狀態
+                    event.stopPropagation();
+                    return; // 停止執行後續的提交邏輯
+                }
+    
+                form.classList.add('was-validated'); // 添加驗證成功的樣式
+    
+                // 如果驗證成功，則繼續提交表單數據
+                const formData = new FormData(form); // 獲取表單數據
+                const formObj = Object.fromEntries(formData.entries()); // 將表單數據轉換為普通對象
+    
+                try {
+                    // 發送資料到後端
+                    const response = await fetch(window.location.pathname, { // 使用當前頁面的路徑
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formObj), // 傳遞 JSON 數據
+                    });
+    
+                    const result = await response.json(); // 獲取後端返回的 JSON 數據
+    
+                    // 根據不同的 HTTP 狀態碼處理
+                    if (response.status === 200) {
+                        alert(result.message); // 顯示成功訊息
+                        window.location.href = result.redirect; // 導向後端指定的頁面
+                    } else if (response.status === 500) {
+                        alert(result.message); // 顯示伺服器錯誤提示
+                    } else {
+                        alert('An unexpected error occurred. Please try again.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to update. Please check your network or try again later.');
+                }
+            }, false);
+        })();
+    </script>
+    
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+
+</html>

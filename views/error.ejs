@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error</title>
+    <!-- 引入 Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class=" text-dark">
+    <%- include('partials/userHeader') %>
+
+    <div class="container d-flex justify-content-center align-items-center vh-100">
+        <div class="card shadow-lg text-center p-4">
+            <h1 class="text-danger">Error <%= error.status %></h1>
+            <p class="fs-4"><%= error.message %></p>
+            <a href="/" class="btn btn-primary mt-3">Back to Home</a>
+        </div>
+    </div>
+
+    <!-- 引入 Bootstrap JS (如果有互動功能需求) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
